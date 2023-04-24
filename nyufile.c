@@ -1,10 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
 #include "fatstruct.h"
 
-char *filename = NULL, *sha1 = NULL;
-// char *disk;
+char *filename = NULL, *sha1 = NULL, *disk = NULL, *addr = NULL;
+struct BootEntry* btEntry;
 
 void showUsage(){
     printf("Usage: ./nyufile disk <options>\n");
@@ -54,12 +58,37 @@ int operation(int argc, char* argv[]) {
     }
     if(optind != argc-1 || op == 5) showUsage();
     else if(sha1 != NULL) op = 4;
-    // disk = (char*)argv[optind];
+    disk = (char*)argv[optind];
     return op;
 }
 
+void mapDisk(){
+    int fd = open(disk, O_RDWR);
+    if (fd != -1){
+        struct stat sb;
+        if (fstat(fd, &sb) != -1) {
+            addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+            if (addr == MAP_FAILED) exit(0);
+            btEntry = (BootEntry*)addr;
+        }
+    }
+}
+
+void showInfo(){
+    printf("Number of FATs = %d\n", btEntry->BPB_NumFATs);
+    printf("Number of bytes per sector = %d\n", btEntry->BPB_BytsPerSec);
+    printf("Number of sectors per cluster = %d\n", btEntry->BPB_SecPerClus);
+    printf("Number of reserved sectors = %d\n", btEntry->BPB_RsvdSecCnt);
+}
+
 int main(int argc, char* argv[]){
-    operation(argc, argv);
+    int op = operation(argc, argv);
+    mapDisk(disk);
+    switch (op)
+    {
+        case 1: showInfo(); break;
+        default: break;
+    }
     return 0;
 }
 
