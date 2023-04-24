@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "fatstruct.h"
 
 char *filename = NULL, *sha1 = NULL;
 // char *disk;
