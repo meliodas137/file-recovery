@@ -1,5 +1,6 @@
 CC=gcc -pthread
 CFLAGS=-g -pedantic -std=gnu17 -Wall -Werror -Wextra
+LDFLAGS=-lcrypto
 
 .PHONY: all
 all: nyufile
