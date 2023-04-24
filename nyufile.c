@@ -25,30 +25,29 @@ int operation(int argc, char* argv[]) {
     while ((ch = getopt(argc, argv, "ilr:R:s:")) != -1) {
         switch (ch) {
             case 'i': 
-                if(op == 0) op = 1;
+                if(sha1 == NULL && op == 0) op = 1;
                 else showUsage();
                 break;
             case 'l': 
-                if(op == 0) op = 2; 
+                if(sha1 == NULL && op == 0) op = 2; 
                 else showUsage();
                 break;
             case 'r': 
-                if(filename == NULL && (op == 0 || op == 5)) {
+                if(filename == NULL && op == 0) {
                     op = 3;
                     if((filename = (char*)optarg) == NULL) showUsage();
                 }
                 else showUsage();
                 break;
             case 'R': 
-                if(filename == NULL && (op == 0 || op == 5)) {
+                if(filename == NULL && op == 0) {
                     op = 4;
                     if((filename = (char*)optarg) == NULL) showUsage();
                 }
                 else showUsage();
                 break;
             case 's':
-                if(sha1 == NULL && (op == 0 || op == 3 || op == 4)) {
-                    if(op == 0) op = 5;
+                if(sha1 == NULL) {
                     if((sha1 = (char*)optarg) == NULL) showUsage();
                 }
                 else showUsage();
@@ -56,8 +55,8 @@ int operation(int argc, char* argv[]) {
             default: showUsage();
         }
     }
-    if(optind != argc-1 || op == 5) showUsage();
-    else if(sha1 != NULL) op = 4;
+    if(optind != argc-1 || (op == 4 && sha1 == NULL) || op == 0) showUsage();
+    if(sha1 != NULL) op = 4;
     disk = (char*)argv[optind];
     return op;
 }
