@@ -1,6 +1,7 @@
 /*
 https://stackoverflow.com/questions/17602229/how-to-make-int-from-char4-in-c
 https://www.includehelp.com/c-programs/extract-bytes-from-int.aspx
+https://www.codeproject.com/Questions/5263050/How-to-convert-char-array-to-a-byte-array-in-C-pro
 */ 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,10 +10,13 @@ https://www.includehelp.com/c-programs/extract-bytes-from-int.aspx
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <openssl/sha.h>
 
 #include "fatstruct.h"
 
-char *filename = NULL, *sha1 = NULL, *disk = NULL, *addr = NULL;
+const unsigned char EMPTY_SHA[] = "\xda\x39\xa3\xee\x5e\x6b\x4b\x0d\x32\x55\xbf\xef\x95\x60\x18\x90\xaf\xd8\x07\x09";
+char *filename = NULL, *disk = NULL;
+unsigned char sha1[SHA_DIGEST_LENGTH], *addr = NULL;
 unsigned int *fat = NULL;
 struct BootEntry* btEntry;
 
@@ -199,9 +203,10 @@ void showRootDir(){
     printf("Total number of entries = %d\n", count);
     return;
 }
-void doRecovery(struct DirEntry* dirEnt){
+void doRecovery(struct DirEntry* dirEnt, int useSHA){
     dirEnt->DIR_Name[0] = filename[0];
-    printf("%s: successfully recovered\n", filename);
+    if(useSHA == 1) printf("%s: successfully recovered with SHA-1\n", filename);
+    else printf("%s: successfully recovered\n", filename);
 
     if(dirEnt->DIR_FileSize == 0) return;
 
@@ -226,7 +231,7 @@ void recoverFile(){
         struct DirEntry* dirEnt;
         while(currCount < maxEntry && (dirEnt = (struct DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
             char *name = getName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
-            if(dirEnt->DIR_Name[0] == 0xe5 && strcmp(name + 1, filename + 1) == 0) {
+            if(dirEnt->DIR_Name[0] == 0xe5 && memcmp(name + 1, filename + 1, strlen(filename)) == 0) {
                 if(delEntry == NULL) delEntry = dirEnt;
                 else multi = 1;
             }
@@ -238,7 +243,37 @@ void recoverFile(){
     }
     if(multi == 1) printf("%s: multiple candidates found\n", filename);
     else if(delEntry == NULL) printf("%s: file not found\n", filename);
-    else doRecovery(delEntry);
+    else doRecovery(delEntry, 0);
+}
+
+void recoverFileWithSHA(){
+    unsigned int currClus = btEntry->BPB_RootClus;
+    int maxEntry = ((btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec))/(sizeof(struct DirEntry));
+
+    while(currClus < 0x0ffffff8) {
+        int currCount = 0;
+        unsigned int currPos = getClusterPosition(currClus);
+        struct DirEntry* dirEnt;
+        while(currCount < maxEntry && (dirEnt = (struct DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
+            char *name = getName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
+            if(dirEnt->DIR_Name[0] == 0xe5 && memcmp(name + 1, filename + 1, strlen(filename)) == 0) {
+                unsigned char *md = malloc(SHA_DIGEST_LENGTH);
+                SHA1(addr + getClusterPosition(getStartCluster(dirEnt)), dirEnt->DIR_FileSize, md);
+                if(memcmp(sha1, md, SHA_DIGEST_LENGTH) == 0) {
+                    doRecovery(dirEnt, 1);
+                    free(md);
+                    free(name);
+                    return;
+                }
+                free(md);
+            }
+            free(name);
+            currCount++;
+            currPos += sizeof(struct DirEntry);
+        }
+        currClus = fat[currClus];
+    }
+    printf("%s: file not found\n", filename);
 }
 
 int main(int argc, char* argv[]){
@@ -249,6 +284,7 @@ int main(int argc, char* argv[]){
         case 1: showInfo(); break;
         case 2: showRootDir(); break;
         case 3: recoverFile(); break;
+        case 4: recoverFileWithSHA(); break;
         default: break;
     }
     return 0;
