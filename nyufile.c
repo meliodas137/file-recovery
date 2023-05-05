@@ -90,6 +90,16 @@ unsigned int getNextCluster(unsigned int currClus){
     return *(fat + 4*currClus);
 }
 
+unsigned int getStartCluster(struct DirEntry* dirEnt){
+    unsigned short high = dirEnt->DIR_FstClusHI, low = dirEnt->DIR_FstClusLO;
+    char a[4];
+    a[1] = (high & 0xFF);
+    a[0] = ((high >> 8) & 0xFF);
+    a[3] = ((low) & 0xFF);
+    a[2] = ((low >> 8) & 0xFF); 
+
+    return (a[0] | a[1] | a[2] | a[3]);
+}
 int main(int argc, char* argv[]){
     int op = operation(argc, argv);
     mapDisk(disk);
