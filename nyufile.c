@@ -2,6 +2,7 @@
 https://stackoverflow.com/questions/17602229/how-to-make-int-from-char4-in-c
 https://www.includehelp.com/c-programs/extract-bytes-from-int.aspx
 https://www.codeproject.com/Questions/5263050/How-to-convert-char-array-to-a-byte-array-in-C-pro
+https://www.geeksforgeeks.org/check-whether-k-th-bit-set-not/#
 */ 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +30,7 @@ void showUsage(){
     exit(0);
 }
 
-int FromHex(char c)
+int hexToInt(char c)
    {
    switch(c)
       {
@@ -50,14 +51,12 @@ int FromHex(char c)
       case 'e': return 14;
       case 'f': return 15;
       }
-   // Report a problem here!
    return -1;
    }
 void fixSha1(unsigned char *sha1_temp){
     int i = 0, j = 0;
     while(sha1_temp[i] != '\0') {
-        sha1[j] = FromHex(sha1_temp[i+1]) + 16*(FromHex(sha1_temp[i]));
-        // printf("%c", sha1[j]);
+        sha1[j] = hexToInt(sha1_temp[i+1]) + 16*(hexToInt(sha1_temp[i]));
         i += 2;
         j++;
     }
@@ -135,13 +134,7 @@ unsigned int getClusterPosition(unsigned int cluster){
 
 unsigned int getStartCluster(struct DirEntry* dirEnt){
     unsigned short high = dirEnt->DIR_FstClusHI, low = dirEnt->DIR_FstClusLO;
-    char a[4];
-    a[1] = (high & 0xFF);
-    a[0] = ((high >> 8) & 0xFF);
-    a[3] = ((low) & 0xFF);
-    a[2] = ((low >> 8) & 0xFF); 
-
-    return (a[0] | a[1] | a[2] | a[3]);
+    return (high >> 8 | low);
 }
 
 char* getName(unsigned char* dirName, int type){
@@ -152,7 +145,7 @@ char* getName(unsigned char* dirName, int type){
         name[i] = dirName[i];
         i++;
     }
-    if(type == 0x10) {
+    if(type & (1 << 4)) {
         name[i] = '/';
         name[i+1] = '\0';
         return name;
@@ -172,7 +165,7 @@ void printInfo(struct DirEntry* dirEnt){
     printf("%s", name);
     free(name);
     printf(" (");
-    if(dirEnt->DIR_Attr != 0x10) {
+    if(!(dirEnt->DIR_Attr & (1 << 4))) {
         if(dirEnt->DIR_FileSize == 0) {
             printf("size = 0)\n");
             return;
