@@ -100,6 +100,42 @@ unsigned int getStartCluster(struct DirEntry* dirEnt){
 
     return (a[0] | a[1] | a[2] | a[3]);
 }
+
+void printName(unsigned char* dirName, int type){
+    int i = 0;
+    while(i<8){
+        if(dirName[i] == 0x20) break;
+        printf("%c", dirName[i]);
+        i++;
+    }
+    if(type == 0x10) {
+        printf("/ ");
+        return;
+    }
+    i = 8;
+    while(i<12){
+        if(dirName[i] == 0x20) break;
+        if(i == 8) printf("."); 
+        printf("%c", dirName[i]);
+        i++;
+    }
+    printf(" ");
+}
+
+void printInfo(struct DirEntry* dirEnt){
+    printName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
+    printf("(");
+    if(dirEnt->DIR_Attr != 0x10) {
+        if(dirEnt->DIR_FileSize == 0) {
+            printf("size = 0)\n");
+            return;
+        }
+        printf("size = %d, ", dirEnt->DIR_FileSize);
+    }
+
+    printf("starting cluster = %d)\n", getStartCluster(dirEnt));
+}
+
 int main(int argc, char* argv[]){
     int op = operation(argc, argv);
     mapDisk(disk);
