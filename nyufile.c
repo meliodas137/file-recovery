@@ -25,17 +25,52 @@ void showUsage(){
     exit(0);
 }
 
+int FromHex(char c)
+   {
+   switch(c)
+      {
+      case '0': return 0;
+      case '1': return 1;
+      case '2': return 2;
+      case '3': return 3;
+      case '4': return 4;
+      case '5': return 5;
+      case '6': return 6;
+      case '7': return 7;
+      case '8': return 8;
+      case '9': return 9;
+      case 'a': return 10;
+      case 'b': return 11;
+      case 'c': return 12;
+      case 'd': return 13;
+      case 'e': return 14;
+      case 'f': return 15;
+      }
+   // Report a problem here!
+   return -1;
+   }
+void fixSha1(unsigned char *sha1_temp){
+    int i = 0, j = 0;
+    while(sha1_temp[i] != '\0') {
+        sha1[j] = FromHex(sha1_temp[i+1]) + 16*(FromHex(sha1_temp[i]));
+        // printf("%c", sha1[j]);
+        i += 2;
+        j++;
+    }
+}
+
 int operation(int argc, char* argv[]) {
     opterr = 0;
+    unsigned char *sha1_temp = NULL;
     int ch, op = 0;
     while ((ch = getopt(argc, argv, "ilr:R:s:")) != -1) {
         switch (ch) {
             case 'i': 
-                if(sha1 == NULL && op == 0) op = 1;
+                if(sha1_temp == NULL && op == 0) op = 1;
                 else showUsage();
                 break;
             case 'l': 
-                if(sha1 == NULL && op == 0) op = 2; 
+                if(sha1_temp == NULL && op == 0) op = 2; 
                 else showUsage();
                 break;
             case 'r': 
@@ -53,16 +88,19 @@ int operation(int argc, char* argv[]) {
                 else showUsage();
                 break;
             case 's':
-                if(sha1 == NULL) {
-                    if((sha1 = (char*)optarg) == NULL) showUsage();
+                if(sha1_temp == NULL) {
+                    if((sha1_temp = (unsigned char*)optarg) == NULL) showUsage();
                 }
                 else showUsage();
                 break;
             default: showUsage();
         }
     }
-    if(optind != argc-1 || (op == 4 && sha1 == NULL) || op == 0) showUsage();
-    if(sha1 != NULL) op = 4;
+    if(optind != argc-1 || (op == 4 && sha1_temp == NULL) || op == 0) showUsage();
+    if(sha1_temp != NULL) {
+        op = 4;
+        fixSha1(sha1_temp);
+    }
     disk = (char*)argv[optind];
     return op;
 }
