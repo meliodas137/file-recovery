@@ -90,10 +90,6 @@ unsigned int getClusterPosition(unsigned int cluster){
     return (btEntry->BPB_RsvdSecCnt + (btEntry->BPB_FATSz32*btEntry->BPB_NumFATs) + (btEntry->BPB_SecPerClus)*(cluster - 2))*(btEntry->BPB_BytsPerSec);
 }
 
-unsigned int getNextCluster(unsigned int currClus){
-    return *(fat + 4*currClus);
-}
-
 unsigned int getStartCluster(struct DirEntry* dirEnt){
     unsigned short high = dirEnt->DIR_FstClusHI, low = dirEnt->DIR_FstClusLO;
     char a[4];
@@ -105,28 +101,33 @@ unsigned int getStartCluster(struct DirEntry* dirEnt){
     return (a[0] | a[1] | a[2] | a[3]);
 }
 
-void printName(unsigned char* dirName, int type){
+char* getName(unsigned char* dirName, int type){
     int i = 0;
+    char* name = malloc(13);
     while(i<8){
         if(dirName[i] == 0x20) break;
-        printf("%c", dirName[i]);
+        name[i] = dirName[i];
         i++;
     }
     if(type == 0x10) {
-        printf("/");
-        return;
+        name[i] = '/';
+        name[i+1] = '\0';
+        return name;
     }
-    i = 8;
-    while(i<11){
-        if(dirName[i] == 0x20) return;
-        if(i == 8) printf("."); 
-        printf("%c", dirName[i]);
-        i++;
+    int j = 8;
+    while(j<11){
+        if(dirName[j] == 0x20) break;
+        if(j == 8) name[i++] = '.'; 
+        name[i++] = dirName[j++];
     }
+    name[i] = '\0';
+    return name;
 }
 
 void printInfo(struct DirEntry* dirEnt){
-    printName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
+    char *name = getName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
+    printf("%s", name);
+    free(name);
     printf(" (");
     if(dirEnt->DIR_Attr != 0x10) {
         if(dirEnt->DIR_FileSize == 0) {
