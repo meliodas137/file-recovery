@@ -13,7 +13,7 @@ https://www.includehelp.com/c-programs/extract-bytes-from-int.aspx
 #include "fatstruct.h"
 
 char *filename = NULL, *sha1 = NULL, *disk = NULL, *addr = NULL;
-int *fat = NULL;
+unsigned int *fat = NULL;
 struct BootEntry* btEntry;
 
 void showUsage(){
@@ -75,7 +75,7 @@ void mapDisk(){
             addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             if (addr == MAP_FAILED) exit(0);
             btEntry = (struct BootEntry*)addr;
-            fat = (int *)(addr + (btEntry->BPB_RsvdSecCnt)*(btEntry->BPB_BytsPerSec));
+            fat = (unsigned int *)(addr + (btEntry->BPB_RsvdSecCnt)*(btEntry->BPB_BytsPerSec));
         }
     }
 }
@@ -161,10 +161,27 @@ void showRootDir(){
     printf("Total number of entries = %d\n", count);
     return;
 }
+void doRecovery(struct DirEntry* dirEnt){
+    dirEnt->DIR_Name[0] = filename[0];
+    printf("%s: successfully recovered\n", filename);
 
-void recoverSmallFile(){
+    if(dirEnt->DIR_FileSize == 0) return;
+
+    unsigned int clusters = (dirEnt->DIR_FileSize)/((btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec));
+    if(dirEnt->DIR_FileSize > clusters*(btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec)) clusters++;
+    
+    unsigned int i = -1;
+    while(++i < clusters - 1) fat[getStartCluster(dirEnt) + i] = getStartCluster(dirEnt) + i + 1; 
+    fat[getStartCluster(dirEnt) + clusters - 1] = 0x0ffffff8;
+    return;
+
+}
+void recoverFile(){
     unsigned int currClus = btEntry->BPB_RootClus;
     int maxEntry = ((btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec))/(sizeof(struct DirEntry));
+
+    struct DirEntry* delEntry = NULL;
+    int multi = 0;
     while(currClus < 0x0ffffff8) {
         int currCount = 0;
         unsigned int currPos = getClusterPosition(currClus);
@@ -172,13 +189,8 @@ void recoverSmallFile(){
         while(currCount < maxEntry && (dirEnt = (struct DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
             char *name = getName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
             if(dirEnt->DIR_Name[0] == 0xe5 && strcmp(name + 1, filename + 1) == 0) {
-                dirEnt->DIR_Name[0] = filename[0];
-                if(dirEnt->DIR_FileSize != 0) {
-                    fat[getStartCluster(dirEnt)] = 0x0ffffff8;
-                }
-                free(name);
-                printf("%s: successfully recovered\n", filename);
-                return;
+                if(delEntry == NULL) delEntry = dirEnt;
+                else multi = 1;
             }
             free(name);
             currCount++;
@@ -186,8 +198,9 @@ void recoverSmallFile(){
         }
         currClus = fat[currClus];
     }
-    printf("%s: file not found\n", filename);
-    return;
+    if(multi == 1) printf("%s: multiple candidates found\n", filename);
+    else if(delEntry == NULL) printf("%s: file not found\n", filename);
+    else doRecovery(delEntry);
 }
 
 int main(int argc, char* argv[]){
@@ -197,7 +210,7 @@ int main(int argc, char* argv[]){
     {
         case 1: showInfo(); break;
         case 2: showRootDir(); break;
-        case 3: recoverSmallFile(); break;
+        case 3: recoverFile(); break;
         default: break;
     }
     return 0;
