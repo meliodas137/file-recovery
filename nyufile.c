@@ -73,7 +73,7 @@ void mapDisk(){
         if (fstat(fd, &sb) != -1) {
             addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
             if (addr == MAP_FAILED) exit(0);
-            btEntry = (BootEntry*)addr;
+            btEntry = (struct BootEntry*)addr;
             fat = (addr + (btEntry->BPB_RsvdSecCnt)*(btEntry->BPB_BytsPerSec));
         }
     }
@@ -113,22 +113,21 @@ void printName(unsigned char* dirName, int type){
         i++;
     }
     if(type == 0x10) {
-        printf("/ ");
+        printf("/");
         return;
     }
     i = 8;
-    while(i<12){
-        if(dirName[i] == 0x20) break;
+    while(i<11){
+        if(dirName[i] == 0x20) return;
         if(i == 8) printf("."); 
         printf("%c", dirName[i]);
         i++;
     }
-    printf(" ");
 }
 
 void printInfo(struct DirEntry* dirEnt){
     printName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
-    printf("(");
+    printf(" (");
     if(dirEnt->DIR_Attr != 0x10) {
         if(dirEnt->DIR_FileSize == 0) {
             printf("size = 0)\n");
@@ -142,18 +141,18 @@ void printInfo(struct DirEntry* dirEnt){
 
 void showRootDir(){
     unsigned int currClus = btEntry->BPB_RootClus;
-    int count = 0, maxEntry = (btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec)/(sizeof(DirEntry));
+    int count = 0, maxEntry = ((btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec))/(sizeof(struct DirEntry));
     while(currClus < 0x0ffffff8) {
         int currCount = 0;
         unsigned int currPos = getClusterPosition(currClus);
-        struct DirEntry* rootEntry;
-        while(currCount < maxEntry && (rootEntry = (DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
-            if(rootEntry->DIR_Name[0] != 0xe5) {
-                printInfo(rootEntry);
+        struct DirEntry* dirEnt;
+        while(currCount < maxEntry && (dirEnt = (struct DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
+            if(dirEnt->DIR_Name[0] != 0xe5) {
+                printInfo(dirEnt);
                 count++;
             }
             currCount++;
-            currPos += sizeof(DirEntry);
+            currPos += sizeof(struct DirEntry);
         }
         currClus = getNextCluster(currClus);
     }
