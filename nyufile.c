@@ -136,12 +136,34 @@ void printInfo(struct DirEntry* dirEnt){
     printf("starting cluster = %d)\n", getStartCluster(dirEnt));
 }
 
+void showRootDir(){
+    unsigned int currClus = btEntry->BPB_RootClus;
+    int count = 0, maxEntry = (btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec)/(sizeof(DirEntry));
+    while(currClus < 0x0ffffff8) {
+        int currCount = 0;
+        unsigned int currPos = getClusterPosition(currClus);
+        struct DirEntry* rootEntry;
+        while(currCount < maxEntry && (rootEntry = (DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
+            if(rootEntry->DIR_Name[0] != 0xe5) {
+                printInfo(rootEntry);
+                count++;
+            }
+            currCount++;
+            currPos += sizeof(DirEntry);
+        }
+        currClus = getNextCluster(currClus);
+    }
+    printf("Total number of entries = %d\n", count);
+    return;
+}
+
 int main(int argc, char* argv[]){
     int op = operation(argc, argv);
     mapDisk(disk);
     switch (op)
     {
         case 1: showInfo(); break;
+        case 2: showRootDir(); break;
         default: break;
     }
     return 0;
