@@ -8,6 +8,7 @@
 #include "fatstruct.h"
 
 char *filename = NULL, *sha1 = NULL, *disk = NULL, *addr = NULL;
+char *fat = NULL;
 struct BootEntry* btEntry;
 
 void showUsage(){
@@ -69,6 +70,7 @@ void mapDisk(){
             addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
             if (addr == MAP_FAILED) exit(0);
             btEntry = (BootEntry*)addr;
+            fat = (addr + (btEntry->BPB_RsvdSecCnt)*(btEntry->BPB_BytsPerSec));
         }
     }
 }
@@ -78,6 +80,14 @@ void showInfo(){
     printf("Number of bytes per sector = %d\n", btEntry->BPB_BytsPerSec);
     printf("Number of sectors per cluster = %d\n", btEntry->BPB_SecPerClus);
     printf("Number of reserved sectors = %d\n", btEntry->BPB_RsvdSecCnt);
+}
+
+unsigned int getClusterPosition(unsigned int cluster){
+    return (btEntry->BPB_RsvdSecCnt + (btEntry->BPB_FATSz32*btEntry->BPB_NumFATs) + (btEntry->BPB_SecPerClus)*(cluster - 2))*(btEntry->BPB_BytsPerSec);
+}
+
+unsigned int getNextCluster(unsigned int currClus){
+    return *(fat + 4*currClus);
 }
 
 int main(int argc, char* argv[]){
