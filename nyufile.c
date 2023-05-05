@@ -162,6 +162,34 @@ void showRootDir(){
     return;
 }
 
+void recoverSmallFile(){
+    unsigned int currClus = btEntry->BPB_RootClus;
+    int maxEntry = ((btEntry->BPB_SecPerClus)*(btEntry->BPB_BytsPerSec))/(sizeof(struct DirEntry));
+    while(currClus < 0x0ffffff8) {
+        int currCount = 0;
+        unsigned int currPos = getClusterPosition(currClus);
+        struct DirEntry* dirEnt;
+        while(currCount < maxEntry && (dirEnt = (struct DirEntry*)(addr + currPos))->DIR_Name[0] != 0) {
+            char *name = getName(dirEnt->DIR_Name, dirEnt->DIR_Attr);
+            if(dirEnt->DIR_Name[0] == 0xe5 && strcmp(name + 1, filename + 1) == 0) {
+                dirEnt->DIR_Name[0] = filename[0];
+                if(dirEnt->DIR_FileSize != 0) {
+                    fat[getStartCluster(dirEnt)] = 0x0ffffff8;
+                }
+                free(name);
+                printf("%s: successfully recovered\n", filename);
+                return;
+            }
+            free(name);
+            currCount++;
+            currPos += sizeof(struct DirEntry);
+        }
+        currClus = fat[currClus];
+    }
+    printf("%s: file not found\n", filename);
+    return;
+}
+
 int main(int argc, char* argv[]){
     int op = operation(argc, argv);
     mapDisk(disk);
@@ -169,6 +197,7 @@ int main(int argc, char* argv[]){
     {
         case 1: showInfo(); break;
         case 2: showRootDir(); break;
+        case 3: recoverSmallFile(); break;
         default: break;
     }
     return 0;
