@@ -1,3 +1,7 @@
+/*
+https://stackoverflow.com/questions/17602229/how-to-make-int-from-char4-in-c
+https://www.includehelp.com/c-programs/extract-bytes-from-int.aspx
+*/ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
