@@ -8,11 +8,12 @@ https://www.includehelp.com/c-programs/extract-bytes-from-int.aspx
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #include "fatstruct.h"
 
 char *filename = NULL, *sha1 = NULL, *disk = NULL, *addr = NULL;
-char *fat = NULL;
+int *fat = NULL;
 struct BootEntry* btEntry;
 
 void showUsage(){
@@ -71,10 +72,10 @@ void mapDisk(){
     if (fd != -1){
         struct stat sb;
         if (fstat(fd, &sb) != -1) {
-            addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+            addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             if (addr == MAP_FAILED) exit(0);
             btEntry = (struct BootEntry*)addr;
-            fat = (addr + (btEntry->BPB_RsvdSecCnt)*(btEntry->BPB_BytsPerSec));
+            fat = (int *)(addr + (btEntry->BPB_RsvdSecCnt)*(btEntry->BPB_BytsPerSec));
         }
     }
 }
@@ -155,7 +156,7 @@ void showRootDir(){
             currCount++;
             currPos += sizeof(struct DirEntry);
         }
-        currClus = getNextCluster(currClus);
+        currClus = fat[currClus];
     }
     printf("Total number of entries = %d\n", count);
     return;
